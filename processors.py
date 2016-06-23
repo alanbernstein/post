@@ -80,6 +80,11 @@ class ScadLaserFileProcessor(FileProcessor):
         self.processed_path = svg_path
 
 
+class ScadPrinterFileProcessor(FileProcessor):
+    """not much reason to upload these to my site..."""
+    remote_path_base = '3dprint'
+
+
 class ImageFileProcessor(FileProcessor):
     remote_path_base = 'images'
     is_binary = True
