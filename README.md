@@ -1,7 +1,7 @@
 # post
 cli tool for automating the process of posting files to a website
 
-idea: tool for processing files and uploading to my website, with a minimal interface: `post filename`. program should be able to figure out everything that i would normally want to do, and do it itself
+idea: tool for processing files and uploading to my website, with a minimal interface: `post filename`. program should be able to figure out everything that i would normally want to do, and do it itself. mostly: picking a directory, scaling an image (automatically based on size), rotating an image, converting an org file to html, converting a scad file to svg
 
 # usage
 `post image.jpg`
