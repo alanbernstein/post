@@ -21,6 +21,7 @@ class ScadLaserFileProcessor(object):
     default_unit = 'mm'
     default_stroke_width = .1
     scad_cmd = '/Applications/OpenSCAD.app/Contents/MacOS/OpenSCAD'
+    remote_path = 'laser'
 
     def __init__(self, fname):
         """init with either
