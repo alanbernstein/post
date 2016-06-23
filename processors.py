@@ -1,7 +1,7 @@
 import os
 import readline
 from orgtools import is_org_file, convert_org_to_html
-# from scadtools import ...
+from scadtools import convert_scad_to_svg
 
 
 def prompt_for_remote_path(local_path, filetype=None):
@@ -39,11 +39,11 @@ class FileProcessor(object):
     def __init__(self, fname):
         self.local_path = os.path.realpath(fname)
 
-    def run(self):
-        self.process()
+    def run(self, options):
+        self.process(options)
         self._define_remote_path()
 
-    def process(self):
+    def process(self, options):
         """Override"""
         self.processed_path = self.local_path
 
@@ -57,7 +57,7 @@ class OrgFileProcessor(FileProcessor):
     # TODO: handle links properly?
     remote_path_base = 'txt'
 
-    def process(self):
+    def process(self, options):
         html_path, message_list = convert_org_to_html(self.local_path)
         for msg in message_list:
             print('    %s' % msg)
@@ -75,6 +75,10 @@ class TextFileProcessor(FileProcessor):
 class ScadLaserFileProcessor(FileProcessor):
     remote_path_base = 'laser'
 
+    def process(self, options):
+        svg_path = convert_scad_to_svg(self.local_path)
+        self.processed_path = svg_path
+
 
 class ImageFileProcessor(FileProcessor):
     remote_path_base = 'images'
@@ -84,3 +88,31 @@ class ImageFileProcessor(FileProcessor):
 class PhotoFileProcessor(FileProcessor):
     remote_path_base = 'images'  # or 'photos'?
     is_binary = True
+
+
+def get_file_processor(fname):
+    """identify file type, get FileProcessor associated with it"""
+
+    filepath, basename = os.path.split(os.path.realpath(fname))
+    basename, ext = os.path.splitext(basename)
+
+    extl = ext.lower()
+
+    if extl == '.txt':
+        org_file_flag, org_file_message = is_org_file(fname)
+        if org_file_flag:
+            return OrgFileProcessor(fname)
+        return TextFileProcessor(fname)
+
+    if extl in ['.scad', '.svg']:
+        return ScadLaserFileProcessor(fname)
+
+    if extl in ['.png', '.bmp', '.gif']:
+        return ImageFileProcessor(fname)
+
+    if extl in ['jpg', 'jpeg']:
+        if False:  # check resolution
+            return PhotoFileProcessor(fname)
+        return ImageFileProcessor(fname)
+
+    return FileProcessor(fname)

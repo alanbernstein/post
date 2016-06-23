@@ -10,48 +10,32 @@ $ post file.txt  # but contains heuristic org-mode patterns
 $ post other.file
   prompt for remote path; ftp password, upload
 '''
+import os
+import sys
+import ftplib
+import getpass
+from processors import get_file_processor
+from panda.debug import debug
+
 # param ideas:
 # post -s 25% files...        # scale images 25%
 # post --scale 25% files...
 # post -c                     # crop images interactively?
 # post --crop
 
-
-
 # idea: have "post" detect scad files, convert to svg with openscad, then upload to "laser" directory on site
 # have "filetype handler"
 # svgtools.add_units()
 # .upload files in directories that show where to upload things - or maybe just keep it in a json file?
-
-
-
-import os
-import sys
-import ftplib
-import subprocess
-
-import getpass
-
-from panda.debug import debug
-
-#from orgtools.orgtools import is_org_file, convert_org_to_html
-from orgtools import is_org_file, convert_org_to_html
-# TODO: fix this ^
-
-from processors import *
-
-#from panda.debug import debug  # this breaks the get_remote_path function???
-
 
 # todo:
 # - verbosity flag - logging module? debugprint?
 # - work for all file types
 # - if code, do syntax highlighting
 # - open in browser after done (printing out url obviates this)
-# - delete local html files later 
+# - delete local html files later
 # - accept directory or glob/wildcard inputs
 # - prompt for image crop/scale
-# - ensure that org-mode links continue to work properly
 # - php, py -> executable? executable directory? probably a bad idea
 # - make more reusable
 #   - make into a package that can be imported in another file
@@ -66,17 +50,8 @@ from processors import *
 # X put password in .netrc or .secretrc  https://docs.python.org/2/library/netrc.html
 # X work for multiple files
 
-def dbprint(args):
-    print(args)
-
 
 class FTPUploader(object):
-
-    # file processing params
-    extensions = {'text': ['.txt', '.org', '.html', '.py'],
-                  'image': ['.jpg', '.jpeg', '.png', '.gif'],
-                  }
-
     upload_queue = []
 
     def __init__(self, url, username, password):
@@ -84,19 +59,17 @@ class FTPUploader(object):
         self.username = username
         self.password = password
 
-    def run(self, cli_args):
+    def run(self, fnames, options):
         # TODO: maybe this stuff shouldnt be in FTPUploader...
-        self.parse_args(cli_args)
 
         self.processors = []
-
-        for fname in self.filenames:
+        for fname in fnames:
             processor = get_file_processor(fname)
             print('%s - %s' % (fname, processor.__class__.__name__))
             self.processors.append(processor)
 
         for proc in self.processors:
-            proc.run()
+            proc.run(options)
             self.upload_queue.append(proc)
 
         self.upload_files()
@@ -132,90 +105,17 @@ class FTPUploader(object):
         #.pwd get current directory
         pass
 
-    def parse_args(self, args):
-        # new structure:
-        # split into params and filenames
-        if len(args) == 0 or args[0] in ['h', 'help']:
-            print(__doc__)
-            exit
 
-        self.image_filenames = []
-        self.text_filenames = []
-        self.other_filenames = []
-        self.filenames = []
-        self.params = []
-        # todo: use the File class here
-        # todo: use os.path.isfile instead of this ad-hoc check?
-        for arg in args:
-            dbprint('parsing %s ...' % arg)
-            if '.' in arg:
-                _, ext = os.path.splitext(arg)
-                if ext.lower() in self.extensions['image']:
-                    dbprint('  looks like an image')
-                    self.image_filenames.append(arg)
-                elif ext.lower() in self.extensions['text']:
-                    dbprint('  looks like text')
-                    self.text_filenames.append(arg)
-                else:
-                    dbprint('  looks like ???')
-                    self.other_filenames.append(arg)
-                self.filenames.append(arg)
-            else:
-                self.params.append(arg)
+def parse_args(args):
+    fnames = []
+    options = []
+    for arg in args:
+        if os.path.isfile(arg):
+            fnames.append(arg)
+        else:
+            options.append(arg)
 
-
-class File(object):
-    extensions_by_type = {
-        'text': ['.txt', '.org', '.html', '.py'],
-        'image': ['.jpg', '.jpeg', '.png', '.gif'],
-        'laser': ['.scad', '.svg'],
-    }
-
-    def __init__(self, filename):
-        self.filename = filename
-        self.identify()
-
-    def identify(self):
-        # - extension, mime type -> guess at type, decide text vs binary
-
-        if '.' in self.filename:
-            _, self.ext = os.path.splitext(self.filename)
-            if self.ext.lower() in self.extensions_by_type['image']:
-                self.type.append('image')
-            if self.ext.lower() in self.extensions_by_type['text']:
-                self.type.append('text')
-                if is_org_file(self.filename):
-                    self.type.append('org')
-
-
-def get_file_processor(fname):
-    """identify file type, get FileProcessor associated with it"""
-
-    filepath, basename = os.path.split(os.path.realpath(fname))
-    basename, ext = os.path.splitext(basename)
-
-    extl = ext.lower()
-
-    if extl == '.txt':
-        org_file_flag, org_file_message = is_org_file(fname)
-        if org_file_flag:
-            return OrgFileProcessor(fname)
-        return TextFileProcessor(fname)
-
-    if extl == '.scad':
-        return ScadLaserFileProcessor(fname)
-
-    if extl in ['.png', '.bmp', '.gif']:
-        return ImageFileProcessor(fname)
-
-    if extl in ['jpg', 'jpeg']:
-        if False:  # check resolution
-            return PhotoFileProcessor(fname)
-        return ImageFileProcessor(fname)
-
-    return FileProcessor(fname)
-
-
+    return fnames, options
 
 
 if __name__ == '__main__':
@@ -225,4 +125,5 @@ if __name__ == '__main__':
     password = os.getenv('WEBSITE_FTP_PASSWORD', None)
 
     uploader = FTPUploader(server_url, user, password)
-    uploader.run(sys.argv[1:])
+    fnames, options = parse_args(sys.argv)
+    uploader.run(fnames, options)
