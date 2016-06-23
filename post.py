@@ -29,7 +29,7 @@ import os
 import sys
 import ftplib
 import subprocess
-import readline
+
 import getpass
 
 from panda.debug import debug
@@ -37,6 +37,8 @@ from panda.debug import debug
 #from orgtools.orgtools import is_org_file, convert_org_to_html
 from orgtools import is_org_file, convert_org_to_html
 # TODO: fix this ^
+
+from processors import *
 
 #from panda.debug import debug  # this breaks the get_remote_path function???
 
@@ -68,16 +70,16 @@ def dbprint(args):
     print(args)
 
 
-class SiteUploader(object):
+class FTPUploader(object):
 
     # file processing params
     extensions = {'text': ['.txt', '.org', '.html', '.py'],
                   'image': ['.jpg', '.jpeg', '.png', '.gif'],
                   }
 
+    upload_queue = []
     upload_queue_text = []
     upload_queue_binary = []
-    new_method = False
 
     def __init__(self, url, username, password):
         self.url = url
@@ -85,27 +87,28 @@ class SiteUploader(object):
         self.password = password
 
     def run(self, cli_args):
+        # TODO: maybe this stuff shouldnt be in FTPUploader...
         self.parse_args(cli_args)
 
         self.processors = []
-        if self.new_method:
-            for fname in self.filenames:
-                processor = get_file_processor(fname)
-                self.processors.append(processor(processor))
 
-            for proc in self.processors:
-                proc.run()
+        for fname in self.filenames:
+            processor = get_file_processor(fname)
+            self.processors.append(processor)
 
-            self.upload_files_new()
+        for proc in self.processors:
+            proc.run()
+            self.upload_queue.append(proc)
+
+        self.upload_files()
+
+        #self.process_text_files()
+        #self.process_image_files()
+        #self.process_other_files()
+        #self.upload_files_old()
 
 
-        else:
-            self.process_text_files()
-            self.process_image_files()
-            self.process_other_files()
-            self.upload_files()
-
-    def upload_files_new(self):
+    def upload_files(self):
         if len(self.upload_queue) == 0:
             return
 
@@ -115,7 +118,7 @@ class SiteUploader(object):
         ftp_session = ftplib.FTP_TLS(self.url, self.username, pw)
 
         for e in self.upload_queue:
-            print('%s -> %s (http://%s%s)' % (e.local_path, e.remote_path, self.url, e.web_path))
+            print('%s -> http://%s%s' % (e.local_path, self.url, e.remote_path))
             if e.is_binary:
                 with open(e.local_path, 'r') as f:
                     print('ftp binary upload')
@@ -127,7 +130,7 @@ class SiteUploader(object):
         ftp_session.quit()
 
 
-    def upload_files(self):
+    def upload_files_old(self):
         '''
         upload all files in queue, using single ftp session
         '''
@@ -253,22 +256,6 @@ class SiteUploader(object):
             else:
                 self.params.append(arg)
 
-    @classmethod
-    def prompt_for_remote_path(cls, local_path, filetype=None):
-        '''
-        guess on a remote path based on (extension, mime type, local path)
-        use default_input() to have user verify it
-        '''
-        # todo: pass in a File instead of a local_path and a filetype
-        head, tail = os.path.split(local_path)
-        #  default = '/public_html/txt/' + tail  # this works for main ftp account, but others dont need the public_html
-        type_to_path = {'text': 'txt', 'image': 'images', None: 'files', 'file': 'files', 'other': 'files'}
-        default = '/%s/%s' % (type_to_path[filetype], tail)
-        remote_path = default_input('  remote path: ', default)
-        # web_path = remote_path[12:] # this removes '/public_html' - not necessary for sub-accounts
-        web_path = remote_path
-        return remote_path, web_path
-
 
 class File(object):
     extensions_by_type = {
@@ -294,48 +281,10 @@ class File(object):
                     self.type.append('org')
 
 
-class FileProcessor(object):
-    is_binary = False
-    remote_path_base = '?'
-    web_path_base = '?'
-    remote_path = ''
-    web_path = ''
-
-    def __init__(self, fname):
-        self.local_name = os.path.realpath(fname)
-
-    def run(self):
-        local_path, name = os.path.split(self.local_name)
-        self.remote_name = self.remote_path_base + self.remote_path + name
-        self.web_name = self.web_path_base + self.web_path + name
-
-
-class OrgFileProcessor(FileProcessor):
-    remote_path = '/text'
-
-
-class TextFileProcessor(FileProcessor):
-    remote_path = '/text'
-
-
-class ScadLaserFileProcessor(FileProcessor):
-    remote_path = '/laser'
-
-
-class ImageFileProcessor(FileProcessor):
-    remote_path = '/images'
-    is_binary = True
-
-
-class PhotoFileProcessor(FileProcessor):
-    remote_path = '/images'  # or 'photos'?
-    is_binary = True
-
-
 def get_file_processor(fname):
     """identify file type, get FileProcessor associated with it"""
 
-    filepath, basename = os.path.split(os.path.realname(fname))
+    filepath, basename = os.path.split(os.path.realpath(fname))
     basename, ext = os.path.splitext(basename)
 
     extl = ext.lower()
@@ -360,15 +309,6 @@ def get_file_processor(fname):
     return FileProcessor(fname)
 
 
-def default_input(prompt, prefill=''):
-    '''
-    get CLI input, with a default value already specified
-    '''
-    readline.set_startup_hook(lambda: readline.insert_text(prefill))
-    try:
-        return raw_input(prompt)
-    finally:
-        readline.set_startup_hook()
 
 
 if __name__ == '__main__':
@@ -377,5 +317,5 @@ if __name__ == '__main__':
     user = os.getenv('WEBSITE_FTP_USERNAME', None)
     password = os.getenv('WEBSITE_FTP_PASSWORD', None)
 
-    uploader = SiteUploader(server_url, user, password)
+    uploader = FTPUploader(server_url, user, password)
     uploader.run(sys.argv[1:])
