@@ -4,6 +4,7 @@ from orgtools import is_org_file, convert_org_to_html
 from scadtools import convert_scad_to_svg
 
 
+# TODO: allow this to be used
 def prompt_for_remote_path(local_path, filetype=None):
     '''
     guess on a remote path based on (extension, mime type, local path)
@@ -35,6 +36,7 @@ def default_input(prompt, prefill=''):
 class FileProcessor(object):
     is_binary = False
     remote_path_base = 'files'
+    remove_processed_after_upload = True
 
     def __init__(self, fname):
         self.local_path = os.path.realpath(fname)
@@ -73,10 +75,11 @@ class TextFileProcessor(FileProcessor):
 
 
 class ScadLaserFileProcessor(FileProcessor):
-    remote_path_base = 'laser'
+    remote_path_base = 'files/laser'
 
     def process(self, options):
         svg_path = convert_scad_to_svg(self.local_path)
+        print('ScadLaserFileProcessor - %s' % svg_path)
         self.processed_path = svg_path
 
 
@@ -93,6 +96,11 @@ class ImageFileProcessor(FileProcessor):
 class PhotoFileProcessor(FileProcessor):
     remote_path_base = 'images'  # or 'photos'?
     is_binary = True
+
+    def process(self, options):
+        # get all exif info
+        # scale 25% if dslr photo
+        self.processed_path = self.local_path
 
 
 def get_file_processor(fname):

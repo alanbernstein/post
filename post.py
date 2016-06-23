@@ -96,6 +96,10 @@ class FTPUploader(object):
                 with open(e.processed_path, 'rb') as f:
                     ftp_session.storlines('STOR ' + e.remote_path, f)
 
+            if e.remove_processed_after_upload:
+                if e.local_path != e.processed_path:
+                    print('rm %s # NOT YET LIVE' % e.processed_path)
+
         ftp_session.quit()
 
     def make_ftp_directories(self, remote_path):
@@ -109,7 +113,7 @@ class FTPUploader(object):
 def parse_args(args):
     fnames = []
     options = []
-    for arg in args:
+    for arg in args[1:]:
         if os.path.isfile(arg):
             fnames.append(arg)
         else:
