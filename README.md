@@ -1,6 +1,8 @@
 # post
 cli tool for automating the process of posting files to a website
 
+idea: tool for processing files and uploading to my website, with a minimal interface: `post filename`. program should be able to figure out everything that i would normally want to do, and do it itself
+
 # usage
 `post image.jpg`
 
@@ -13,6 +15,10 @@ cli tool for automating the process of posting files to a website
 `post file.txt` but contains heuristic org-mode patterns
 
   convert to html with emacs, prompt for remote path (with suggestion based on local path), upload
+
+`post laser_design.scad`
+
+  convert to svg with openSCAD, upload
 
 `post other.file`
 
