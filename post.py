@@ -23,35 +23,34 @@ from panda.debug import debug
 # post -c                     # crop images interactively?
 # post --crop
 
-# idea: have "post" detect scad files, convert to svg with openscad, then upload to "laser" directory on site
-# have "filetype handler"
-# svgtools.add_units()
 # .upload files in directories that show where to upload things - or maybe just keep it in a json file?
 
 # todo:
+# - upload to, e.g., laser/pantilt/..., if the file is in pantilt/ directory
 # - verbosity flag - logging module? debugprint?
-# - work for all file types
-# - if code, do syntax highlighting
+# - if code, do syntax highlighting?
 # - open in browser after done (printing out url obviates this)
 # - delete local html files later
-# - accept directory or glob/wildcard inputs
 # - prompt for image crop/scale
 # - php, py -> executable? executable directory? probably a bad idea
 # - make more reusable
 #   - make into a package that can be imported in another file
-#   X rewrite as a class
 # - automatically pick remote path based on local path
 #   - refactor filetype identification code, so it can be used by both parse_args and prompt_for_remote_path
 #     - this can wrap org file identification as well - files can have multiple types - ('image', 'jpg'), ('text', 'txt', 'org')
 #     - use mime type
 #   - images/albums
 #   X txt
-# X create a single FTP session inside SiteUploader
-# X put password in .netrc or .secretrc  https://docs.python.org/2/library/netrc.html
-# X work for multiple files
 
 
 class FTPUploader(object):
+    """Handle the uploading of multiple files to a website via FTP.
+    works with the help of the FileProcessor class, which should provide:
+    run()
+    processed_path
+    remote_path
+    is_binary
+    remove_processed_after_upload"""
     upload_queue = []
 
     def __init__(self, url, username, password):

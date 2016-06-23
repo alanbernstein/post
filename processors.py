@@ -4,21 +4,20 @@ from orgtools import is_org_file, convert_org_to_html
 from scadtools import convert_scad_to_svg
 
 
-# TODO: allow this to be used
+# TODO: allow this to be used, based on cmd line param?
+# no longer need to do the filetype mapping here - can probably just call default_input actually
 def prompt_for_remote_path(local_path, filetype=None):
     '''
     guess on a remote path based on (extension, mime type, local path)
     use default_input() to have user verify it
     '''
-    # todo: pass in a File instead of a local_path and a filetype
+    # note: main ftp account requires remote path to begin '/public_html/' - but not other accounts
+
     head, tail = os.path.split(local_path)
-    #  default = '/public_html/txt/' + tail  # this works for main ftp account, but others dont need the public_html
     type_to_path = {'text': 'txt', 'image': 'images', None: 'files', 'file': 'files', 'other': 'files'}
     default = '/%s/%s' % (type_to_path[filetype], tail)
     remote_path = default_input('  remote path: ', default)
-    # web_path = remote_path[12:] # this removes '/public_html' - not necessary for sub-accounts
-    web_path = remote_path
-    return remote_path, web_path
+    return remote_path
 
 
 def default_input(prompt, prefill=''):
@@ -34,6 +33,8 @@ def default_input(prompt, prefill=''):
 
 # defining remote_path is part of the processor, by design
 class FileProcessor(object):
+    """handle the processing of a file before uploading via ftp.
+    this includes deciding the remote upload path."""
     is_binary = False
     remote_path_base = 'files'
     remove_processed_after_upload = True
@@ -51,6 +52,8 @@ class FileProcessor(object):
 
     def _define_remote_path(self):
         # TODO: prompt to confirm path by default
+        # TODO: append just the local parent directory name to the remote path,
+        # e.g., ~/d/src/scad/laser/pantilt/whatever.scad -> /files/laser/pantilt/whatever.svg
         path, name = os.path.split(self.processed_path)
         self.remote_path = '/%s/%s' % (self.remote_path_base, name)
 
