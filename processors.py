@@ -1,5 +1,8 @@
 import os
 import readline
+from orgtools import is_org_file, convert_org_to_html
+# from scadtools import ...
+
 
 def prompt_for_remote_path(local_path, filetype=None):
     '''
@@ -28,7 +31,6 @@ def default_input(prompt, prefill=''):
         readline.set_startup_hook()
 
 
-
 # defining remote_path is part of the processor, by design
 class FileProcessor(object):
     is_binary = False
@@ -38,27 +40,47 @@ class FileProcessor(object):
         self.local_path = os.path.realpath(fname)
 
     def run(self):
-        path, name = os.path.split(self.local_path)
+        self.process()
+        self._define_remote_path()
+
+    def process(self):
+        """Override"""
+        self.processed_path = self.local_path
+
+    def _define_remote_path(self):
+        # TODO: prompt to confirm path by default
+        path, name = os.path.split(self.processed_path)
         self.remote_path = '/%s/%s' % (self.remote_path_base, name)
 
 
 class OrgFileProcessor(FileProcessor):
-    remote_path = '/text'
+    # TODO: handle links properly?
+    remote_path_base = 'txt'
+
+    def process(self):
+        html_path, message_list = convert_org_to_html(self.local_path)
+        for msg in message_list:
+            print('    %s' % msg)
+        if html_path:
+            print('    converted org file %s to %s' % (self.local_path, html_path))
+            self.processed_path = html_path
+        else:
+            print('    failure in conversion')
 
 
 class TextFileProcessor(FileProcessor):
-    remote_path = '/text'
+    remote_path_base = 'txt'
 
 
 class ScadLaserFileProcessor(FileProcessor):
-    remote_path = '/laser'
+    remote_path_base = 'laser'
 
 
 class ImageFileProcessor(FileProcessor):
-    remote_path = '/images'
+    remote_path_base = 'images'
     is_binary = True
 
 
 class PhotoFileProcessor(FileProcessor):
-    remote_path = '/images'  # or 'photos'?
+    remote_path_base = 'images'  # or 'photos'?
     is_binary = True

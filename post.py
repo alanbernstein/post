@@ -78,8 +78,6 @@ class FTPUploader(object):
                   }
 
     upload_queue = []
-    upload_queue_text = []
-    upload_queue_binary = []
 
     def __init__(self, url, username, password):
         self.url = url
@@ -94,6 +92,7 @@ class FTPUploader(object):
 
         for fname in self.filenames:
             processor = get_file_processor(fname)
+            print('%s - %s' % (fname, processor.__class__.__name__))
             self.processors.append(processor)
 
         for proc in self.processors:
@@ -101,12 +100,6 @@ class FTPUploader(object):
             self.upload_queue.append(proc)
 
         self.upload_files()
-
-        #self.process_text_files()
-        #self.process_image_files()
-        #self.process_other_files()
-        #self.upload_files_old()
-
 
     def upload_files(self):
         if len(self.upload_queue) == 0:
@@ -118,112 +111,26 @@ class FTPUploader(object):
         ftp_session = ftplib.FTP_TLS(self.url, self.username, pw)
 
         for e in self.upload_queue:
-            print('%s -> http://%s%s' % (e.local_path, self.url, e.remote_path))
+            print('%s -> http://%s%s' % (e.processed_path, self.url, e.remote_path))
+
+            self.make_ftp_directories(e.remote_path)
+
             if e.is_binary:
-                with open(e.local_path, 'r') as f:
+                with open(e.processed_path, 'r') as f:
                     print('ftp binary upload')
                     ftp_session.storbinary('STOR ' + e.remote_path, f)
             else:
-                with open(e.local_path, 'rb') as f:
+                with open(e.processed_path, 'rb') as f:
                     ftp_session.storlines('STOR ' + e.remote_path, f)
 
         ftp_session.quit()
 
-
-    def upload_files_old(self):
-        '''
-        upload all files in queue, using single ftp session
-        '''
-        if len(self.upload_queue_binary) == 0 and len(self.upload_queue_text) == 0:
-            return
-
-        print('')
-        print('uploading...')
-        pw = password or getpass.getpass('  ftp password: ')
-        ftp_session = ftplib.FTP_TLS(self.url, self.username, pw)
-
-        # todo: upload_queue should be list of Files, instead of path tuples
-        # then can have a single upload queue, and decide on text/binary based on an attribute
-
+    def make_ftp_directories(self, remote_path):
+        # TODO: implement
         #ftp_session.mkd(pathname) # make dir
         #.cwd(pathname) # set current working directory
         #.pwd get current directory
-
-        for local, remote, web, in self.upload_queue_binary:
-            print('%s -> %s (http://%s%s)' % (local, remote, server_url, web))
-            with open(local, 'r') as f:
-                print('ftp binary upload')
-                ftp_session.storbinary('STOR ' + remote, f)
-
-        for local, remote, web, in self.upload_queue_text:
-            print('%s -> %s (http://%s%s)' % (local, remote, server_url, web))
-            with open(local, 'rb') as f:
-                ftp_session.storlines('STOR ' + remote, f)
-
-        ftp_session.quit()
-
-    def process_other_files(self):
-        '''
-        just copy other files to upload queue
-        '''
-        if len(self.other_filenames) > 0:
-            print('')
-            print('processing other files')
-
-        for f in self.other_filenames:
-            # TODO: prompt for renaming of base filename
-            local_path = f
-
-            # prompt for remote path
-            remote_path, web_path = self.prompt_for_remote_path(local_path, 'other')
-            self.upload_queue_binary.append((local_path, remote_path, web_path))
-
-    def process_image_files(self):
-        '''
-        do whatever processing is necessary before uploading image files
-        - guess at remote path, prompt user to accept or change it
-        - prompt for crop, scale, rename (base)
-
-        store results in an upload queue (local filename, remote server path, url)
-        '''
-        if len(self.image_filenames) > 0:
-            print('')
-            print('processing image files...')
-
-        for f in self.image_filenames:
-            # TODO: prompt for renaming of base filename
-            local_path = f
-
-            # prompt for crop, scale
-            remote_path, web_path = self.prompt_for_remote_path(local_path, 'image')
-            self.upload_queue_binary.append((local_path, remote_path, web_path))
-
-    def process_text_files(self):
-        '''
-        do whatever processing is necessary before uploading text files
-        - guess at remote path, prompt user to accept or change it
-        - identify org files and export them to html
-
-        store results in an upload queue (local filename, remote server path, url)
-        '''
-        if len(self.text_filenames) > 0:
-            print('processing text files...')
-
-        for f in self.text_filenames:
-            print('  %s' % f)
-            org_file_flag, org_file_message = is_org_file(f)
-            if org_file_flag:
-                print('    %s' % org_file_message)
-                local_path, message_list = convert_org_to_html(f)
-                for msg in message_list:
-                    print('    %s' % msg)
-                if local_path:
-                    print('    converted org file %s to %s' % (f, local_path))
-            else:
-                local_path = f
-
-            remote_path, web_path = self.prompt_for_remote_path(local_path, 'text')
-            self.upload_queue_text.append((local_path, remote_path, web_path))
+        pass
 
     def parse_args(self, args):
         # new structure:
