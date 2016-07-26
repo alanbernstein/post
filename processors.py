@@ -38,6 +38,7 @@ class FileProcessor(object):
     is_binary = False
     remote_path_base = 'files'
     remove_processed_after_upload = True
+    use_parent_directory = True  # TODO: implement this
 
     def __init__(self, fname):
         self.local_path = os.path.realpath(fname)
@@ -77,6 +78,15 @@ class TextFileProcessor(FileProcessor):
     remote_path_base = 'txt'
 
 
+class SvgLaserFileProcessor(FileProcessor):
+    remote_path_base = 'files/laser'
+    is_binary = True  # handle long lines
+
+    def process(self, options):
+        print('SvgLaserFileProcessor - %s' % self.local_path)
+        self.processed_path = self.local_path
+
+
 class ScadLaserFileProcessor(FileProcessor):
     remote_path_base = 'files/laser'
 
@@ -95,6 +105,12 @@ class ImageFileProcessor(FileProcessor):
     remote_path_base = 'images'
     is_binary = True
 
+    def process(self, options):
+        import exifread
+        f = open(self.local_path, 'rb')
+        tags = exifread.process_file(f)
+        self.processed_path = self.local_path
+
 
 class PhotoFileProcessor(FileProcessor):
     remote_path_base = 'images'  # or 'photos'?
@@ -103,6 +119,7 @@ class PhotoFileProcessor(FileProcessor):
     def process(self, options):
         # get all exif info
         # scale 25% if dslr photo
+        # bring up crop GUI? arrows + i/o for zoom in/out
         self.processed_path = self.local_path
 
 
@@ -120,8 +137,11 @@ def get_file_processor(fname):
             return OrgFileProcessor(fname)
         return TextFileProcessor(fname)
 
-    if extl in ['.scad', '.svg']:
+    if extl in ['.scad']:
         return ScadLaserFileProcessor(fname)
+
+    if extl in ['.svg']:
+        return SvgLaserFileProcessor(fname)
 
     if extl in ['.png', '.bmp', '.gif']:
         return ImageFileProcessor(fname)
