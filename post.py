@@ -42,8 +42,6 @@ from panda.debug import debug
 #   - images/albums
 #   X txt
 
-x =
-
 class FTPUploader(object):
     """Handle the uploading of multiple files to a website via FTP.
     works with the help of the FileProcessor class, which should provide:
