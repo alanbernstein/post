@@ -3,6 +3,8 @@ import readline
 from orgtools import is_org_file, convert_org_to_html
 from scadtools import convert_scad_to_svg
 
+from panda.debug import debug
+
 
 # TODO: allow this to be used, based on cmd line param?
 # no longer need to do the filetype mapping here - can probably just call default_input actually
@@ -146,7 +148,7 @@ def get_file_processor(fname):
     if extl in ['.png', '.bmp', '.gif']:
         return ImageFileProcessor(fname)
 
-    if extl in ['jpg', 'jpeg']:
+    if extl in ['.jpg', '.jpeg']:
         if False:  # check resolution
             return PhotoFileProcessor(fname)
         return ImageFileProcessor(fname)
