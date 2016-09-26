@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/local/bin/python
 '''
 usage:
 $ post image.jpg
