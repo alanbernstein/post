@@ -46,6 +46,8 @@ class FileProcessor(object):
         self.local_path = os.path.realpath(fname)
 
     def run(self, options):
+        if '-b' in options:
+            self.is_binary = True
         self.process(options)
         self._define_remote_path()
 
@@ -62,7 +64,12 @@ class FileProcessor(object):
 
 
 class OrgFileProcessor(FileProcessor):
-    # TODO: handle links properly?
+    # TODO:
+    # - extract all links with local targets (text and image)
+    # - find them in local filesystem
+    # - mirror directory structure on site
+    # - upload all that don't already exist
+
     remote_path_base = 'txt'
 
     def process(self, options):
@@ -125,6 +132,14 @@ class PhotoFileProcessor(FileProcessor):
         self.processed_path = self.local_path
 
 
+class BinaryFileProcessor(FileProcessor):
+    remote_path_base = 'files'  # or 'photos'?
+    is_binary = True
+
+    def process(self, options):
+        self.processed_path = self.local_path
+
+
 def get_file_processor(fname):
     """identify file type, get FileProcessor associated with it"""
 
@@ -138,6 +153,9 @@ def get_file_processor(fname):
         if org_file_flag:
             return OrgFileProcessor(fname)
         return TextFileProcessor(fname)
+
+    if extl == '.pdf':
+        return BinaryFileProcessor(fname)
 
     if extl in ['.scad']:
         return ScadLaserFileProcessor(fname)
